@@ -19,8 +19,97 @@ library(rstanarm)
 x <- trains %>% 
   mutate(move_to_pop = ifelse(att_end >= att_start + 1, TRUE, FALSE)) %>% 
   select(move_to_pop, treatment, age)
+
+
 ```
 
 
 
+How much does being exposed to spanish speakers cause one to be more conservative?(depends on what we are trying to draw an infrence)
+wisdom
+
+data - experiment with different people's attitudes - either exposed or not exposed to Spanish speakers 
+validity - our data relates to the question we are asking (outcome measure should accurately reflect the phenomenon of interest)
+population - 
+and ethics.
+
+
+
+what is the probability causal effect for treatment to become more populist (for boston)
+
+- two potential outcomes: 1) move_to_pop = true, 2 move_to_pop = false
+
+posterior epred (expectations, expected value, or average, or long term populaiton)
+handful of individuals, 10 random indivuals  (posterior predict)
+
+```{r}
+fit_1 <- stan_glm(data = x,
+                  formula = move_to_pop ~ treatment,
+                  family = binomial,
+                  refresh = 0,
+                  seed = 9)
+```
+left thing i am trying to understand, right thing is the thing that helps me understand. 
+
+
+median treatment(control) = posterior for that
+the posterior for B1 is centered around -.7 and the .4 SD means the 95% conf inverval must be above and below so -1.1 and -.3
+
+```{r}
+
+newobs <- tibble(treatment = c("Treated", "Control"))
+
+posterior_epred(fit_1, newdata = newobs) %>% 
+  as_tibble() %>% 
+  mutate(ate = `1` - `2`) %>% 
+
+# 1 is the estimates for probability for someone given control they would become more populist, posterior distributions for the expected value/probability that smeone becomes more populist given that they are in control. the value for treatment minus control (2.9 distrbutions and draws, 5.1 posterior, chapter 8)
+
+   ggplot(aes(x = ate)) +
+    geom_histogram(aes(y = after_stat(count/sum(count))),
+                   bins = 100) +
+   labs(title = "Posterior for Proportion of populists among those Treated",
+         subtitle = "There is about 25% ",
+         x = "Probability",
+         y = "Probability",
+         caption = "Data source: NHANES") +
+
+```
+
+
+```{r}
+newobs <- tibble(treatment = c(rep("Treated", 25)))
+
+# we want the function to be exactly like the data in our data - treated
+
+pp <- posterior_predict(fit_1, 
+                        newdata = newobs) %>%
+    as_tibble() %>%
+    mutate_all(as.numeric) %>% 
+  rowwise() %>% 
+  mutate(total = sum(c_across()))
+ 
+
+# for the first 25 people, the first row, how many of them became more populist
+# PE is probabilities and PP is p
+
+```
+
+epred if for whole population
+predict is for individual people
+the next 25 people
+some percentage number for the entire population
+binomial case looks different from the normal linear model
+prediction epred for the average for binomial model is 0 or 1
+overall average for a whole population is never zero or one 
+
+assign treatment to 25 people, and see if that changed their attitude
+this is a model we made, estimated posterior is not the same as the true posterior
+
+```{r}
+pp %>% 
+  ggplot(aes(x = total)) +
+    geom_histogram(aes(y = after_stat(count/sum(count))),
+                   bins = 100) 
+```
 
